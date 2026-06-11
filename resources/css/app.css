@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+[x-cloak] {
+    display: none !important;
+}
+
+@layer components {
+    .odoo-table th {
+        @apply bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 px-3 py-2 border-b border-odoo-border;
+    }
+
+    .odoo-table td {
+        @apply px-3 py-2 text-sm border-b border-odoo-border;
+    }
+
+    .odoo-table tbody tr:hover {
+        @apply bg-blue-50 cursor-pointer;
+    }
+
+    .odoo-link {
+        @apply text-odoo-link hover:underline;
+    }
+
+    .odoo-btn-primary {
+        @apply inline-flex items-center px-4 py-2 bg-odoo-purple text-white text-sm font-medium rounded hover:bg-odoo-purple-dark transition;
+    }
+
+    .odoo-btn-secondary {
+        @apply inline-flex items-center px-4 py-2 bg-white text-gray-700 text-sm font-medium rounded border border-odoo-border hover:bg-gray-50 transition;
+    }
+
+    .odoo-badge-draft {
+        @apply inline-flex px-2 py-0.5 text-xs font-medium rounded bg-yellow-100 text-yellow-800;
+    }
+
+    .odoo-badge-posted {
+        @apply inline-flex px-2 py-0.5 text-xs font-medium rounded bg-green-100 text-green-800;
+    }
+}
