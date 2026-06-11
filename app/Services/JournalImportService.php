@@ -9,6 +9,7 @@ use App\Models\JournalEntry;
 use App\Models\JournalType;
 use App\Models\Partner;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
@@ -16,6 +17,10 @@ use RuntimeException;
 
 class JournalImportService
 {
+    public function __construct(private JournalImportSetupService $setupService)
+    {
+    }
+
     private const COL_TYPE = 5;
 
     private const COL_DATE = 6;
@@ -59,7 +64,8 @@ class JournalImportService
         string $filePath,
         bool $replace = false,
         bool $skipExisting = true,
-        bool $dryRun = false
+        bool $dryRun = false,
+        bool $generatePeriods = false,
     ): array {
         if (! file_exists($filePath)) {
             throw new RuntimeException("File tidak ditemukan: {$filePath}");
@@ -82,7 +88,9 @@ class JournalImportService
             'lines_imported' => 0,
             'entries_skipped' => 0,
             'entries_failed' => 0,
+            'periods_generated' => 0,
             'errors' => [],
+            'meta' => [],
         ];
 
         $prepared = [];
@@ -102,13 +110,32 @@ class JournalImportService
             }
         }
 
+        $stats['meta'] = $this->buildMeta($prepared, $parsed['rows']);
+
         if ($dryRun) {
             $stats['entries_ready'] = count($prepared);
+            $stats['lines_ready'] = collect($prepared)->sum(fn (array $entry) => count($entry['lines']));
 
             return $stats;
         }
 
-        return DB::transaction(function () use ($prepared, $replace, $skipExisting, $stats) {
+        if ($generatePeriods) {
+            $stats['periods_generated'] = $this->setupService->ensureFiscalPeriodsForDates(
+                collect($prepared)->pluck('entry_date')
+            );
+
+            $prepared = array_map(function (array $entryData) {
+                $entryData['fiscal_period_id'] = $this->resolveFiscalPeriod(
+                    Carbon::parse($entryData['entry_date'])
+                );
+
+                return $entryData;
+            }, $prepared);
+        }
+
+        $userId = Auth::id();
+
+        return DB::transaction(function () use ($prepared, $replace, $skipExisting, $stats, $userId) {
             if ($replace) {
                 DB::table('journal_entry_lines')->delete();
                 DB::table('journal_entries')->delete();
@@ -142,6 +169,8 @@ class JournalImportService
                     'exchange_rate' => $entryData['exchange_rate'],
                     'is_manual_number' => true,
                     'posted_at' => $entryData['entry_date'],
+                    'posted_by' => $userId,
+                    'created_by' => $userId,
                 ]);
 
                 foreach ($entryData['lines'] as $line) {
@@ -179,7 +208,7 @@ class JournalImportService
 
             $accountCode = $this->normalizeCode($cells[self::COL_ACCOUNT - 1] ?? null);
 
-            if ($accountCode === '') {
+            if ($accountCode === '' || $this->isSkippableAccount($accountCode)) {
                 continue;
             }
 
@@ -264,7 +293,7 @@ class JournalImportService
         $journalTypes
     ): array {
         $first = $lines[0];
-        $typeCode = $this->mapJournalType($first['type']);
+        $typeCode = $this->mapJournalType($first['type'], $journalTypes);
 
         if (! $typeCode || ! $journalTypes->has($typeCode)) {
             throw new RuntimeException("Tipe jurnal tidak dikenali: {$first['type']}");
@@ -378,11 +407,24 @@ class JournalImportService
         return 7;
     }
 
-    private function mapJournalType(string $label): ?string
+    private function mapJournalType(string $label, $journalTypes): ?string
     {
         $key = mb_strtolower(trim($label));
 
-        return $this->journalTypeMap[$key] ?? null;
+        if (isset($this->journalTypeMap[$key])) {
+            return $this->journalTypeMap[$key];
+        }
+
+        $byName = $journalTypes->first(fn (JournalType $type) => mb_strtolower($type->name) === $key);
+
+        if ($byName) {
+            return $byName->code;
+        }
+
+        $partial = $journalTypes->first(fn (JournalType $type) => str_contains($key, mb_strtolower($type->name))
+            || str_contains(mb_strtolower($type->name), $key));
+
+        return $partial?->code;
     }
 
     private function resolvePartnerId(
@@ -412,11 +454,22 @@ class JournalImportService
 
     private function resolveFiscalPeriod(Carbon $date): ?int
     {
-        return FiscalPeriod::query()
-            ->where('start_date', '<=', $date->toDateString())
-            ->where('end_date', '>=', $date->toDateString())
-            ->where('status', 'open')
-            ->value('id');
+        return FiscalPeriod::findForDate($date)?->id;
+    }
+
+    private function buildMeta(array $prepared, array $rows): array
+    {
+        $dates = collect($prepared)->pluck('entry_date')->filter();
+
+        return [
+            'source_lines' => count($rows),
+            'entries_parsed' => count($prepared),
+            'lines_parsed' => collect($prepared)->sum(fn (array $entry) => count($entry['lines'])),
+            'date_from' => $dates->min(),
+            'date_to' => $dates->max(),
+            'years' => $dates->map(fn (string $date) => (int) Carbon::parse($date)->format('Y'))->unique()->sort()->values()->all(),
+            'without_fiscal_period' => collect($prepared)->filter(fn (array $entry) => $entry['fiscal_period_id'] === null)->count(),
+        ];
     }
 
     private function firstNonEmpty(array $lines, string $field): ?string
@@ -432,9 +485,30 @@ class JournalImportService
 
     private function normalizeCode(mixed $value): string
     {
+        if ($value === null || $value === false || $value === '') {
+            return '';
+        }
+
         $code = trim((string) $value);
 
-        return $code === '0' ? '' : $code;
+        if ($code === '' || $code === '0') {
+            return '';
+        }
+
+        if (preg_match('/^\d{7}$/', preg_replace('/\D/', '', $code))) {
+            $digits = preg_replace('/\D/', '', $code);
+
+            return substr($digits, 0, 1) . '.' . substr($digits, 1, 3) . '.' . substr($digits, 4, 3);
+        }
+
+        return $code;
+    }
+
+    private function isSkippableAccount(string $code): bool
+    {
+        $lower = mb_strtolower($code);
+
+        return str_contains($lower, 'total') || str_contains($lower, 'jumlah');
     }
 
     private function normalizePartnerCode(mixed $value): ?string

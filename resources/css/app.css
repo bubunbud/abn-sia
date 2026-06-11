@@ -38,4 +38,50 @@
     .odoo-badge-posted {
         @apply inline-flex px-2 py-0.5 text-xs font-medium rounded bg-green-100 text-green-800;
     }
+
+    .odoo-login-card {
+        @apply bg-white rounded border-0 w-[18.75rem] px-10 py-8;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    .odoo-login-logo {
+        @apply text-[2.5rem] font-light tracking-tight leading-none select-none;
+        font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    .odoo-login-info {
+        @apply text-center text-[0.8125rem] leading-snug text-odoo-login-info-text bg-odoo-login-info-bg border border-odoo-login-info-border rounded-sm px-3 py-2.5 mb-5;
+    }
+
+    .odoo-login-label {
+        @apply block text-sm font-semibold text-gray-800 mb-1;
+    }
+
+    .odoo-login-input {
+        @apply w-full border border-odoo-border rounded-sm px-3 py-[0.45rem] text-sm text-gray-800 placeholder:text-gray-400 bg-white focus:outline-none focus:border-odoo-purple-light focus:ring-0;
+    }
+
+    .odoo-login-input-email {
+        @apply border-odoo-purple-light;
+    }
+
+    .odoo-login-input-email:focus {
+        @apply border-odoo-purple;
+    }
+
+    .odoo-login-reset {
+        @apply text-xs text-odoo-purple-muted hover:text-odoo-purple hover:underline cursor-default;
+    }
+
+    .odoo-login-eye-btn {
+        @apply absolute inset-y-0 right-0 flex items-center justify-center w-10 text-gray-500 hover:text-gray-700 border-l border-odoo-border bg-white rounded-r-sm;
+    }
+
+    .odoo-login-btn {
+        @apply w-full py-2 bg-odoo-purple text-white text-sm font-bold uppercase tracking-wide rounded-sm hover:bg-odoo-purple-dark transition border-0 cursor-pointer;
+    }
+
+    .odoo-login-footer {
+        @apply text-center text-sm text-gray-500 mt-5;
+    }
 }

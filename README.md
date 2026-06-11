@@ -101,9 +101,28 @@ Kolom (sheet `Kode P.Kedua`): `KODE` | `NAMA` | `KETERANGAN` | `STATUS`
 - PDL → Piutang (customer)
 - HDL → Hutang (vendor)
 
+### Import Jurnal Historis (Data Lengkap)
+
+File referensi: `storage/app/imports/jurnal-historis.xlsx` atau `sample_sia.xlsx` (sheet `Jurnal`)
+
+```bash
+# Validasi dulu
+php artisan journals:import --generate-periods --dry-run
+
+# Import penuh
+php artisan journals:import --generate-periods
+
+# Opsi tambahan
+php artisan journals:import file.xlsx --replace --force --generate-periods
+```
+
+Via web: **Journal Entries → Import Historis**
+
+Urutan lengkap:
+1. `php artisan coa:import`
+2. `php artisan partners:import`
+3. `php artisan journals:import --generate-periods`
+
 ## Langkah Berikutnya
 
-- Import COA lengkap dari Excel
-- Trial Balance, Balance Sheet, P&L
-- Period Closing
 - Tax Codes & e-Faktur Export

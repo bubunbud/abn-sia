@@ -4,17 +4,19 @@ namespace App\Http\Controllers\Accounting;
 
 use App\Http\Controllers\Controller;
 use App\Services\JournalImportService;
+use App\Services\JournalImportSetupService;
 use App\Services\JournalImportTemplateService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class JournalImportController extends Controller
 {
     public function __construct(
         private JournalImportService $importService,
         private JournalImportTemplateService $templateService,
+        private JournalImportSetupService $setupService,
     ) {
     }
 
@@ -25,11 +27,17 @@ class JournalImportController extends Controller
 
     public function create(): View
     {
+        $prerequisites = $this->setupService->prerequisites();
+        $defaultFile = $this->setupService->resolveDefaultFile();
+
         return view('accounting.journal-entries.import', [
+            'prerequisites' => $prerequisites,
+            'defaultFile' => $defaultFile,
+            'readyToImport' => $prerequisites['accounts'] > 0,
             'breadcrumbs' => [
                 ['label' => 'Accounting', 'url' => route('accounting.dashboard')],
                 ['label' => 'Journal Entries', 'url' => route('accounting.journal-entries.index')],
-                ['label' => 'Import Historis'],
+                ['label' => 'Import Jurnal'],
             ],
         ]);
     }
@@ -37,10 +45,11 @@ class JournalImportController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'file' => ['required', 'file', 'mimes:xlsx,xls', 'max:20480'],
+            'file' => ['required', 'file', 'mimes:xlsx,xls', 'max:51200'],
             'replace' => ['nullable', 'boolean'],
             'force' => ['nullable', 'boolean'],
             'dry_run' => ['nullable', 'boolean'],
+            'generate_periods' => ['nullable', 'boolean'],
         ]);
 
         $path = $request->file('file')->store('imports');
@@ -51,12 +60,14 @@ class JournalImportController extends Controller
                 replace: $request->boolean('replace'),
                 skipExisting: ! $request->boolean('force'),
                 dryRun: $request->boolean('dry_run'),
+                generatePeriods: $request->boolean('generate_periods'),
             );
 
             if ($request->boolean('dry_run')) {
                 $message = sprintf(
-                    'Validasi berhasil: %d jurnal siap diimpor, %d gagal validasi.',
+                    'Validasi berhasil: %d jurnal (%d baris) siap diimpor. Gagal validasi: %d.',
                     $stats['entries_ready'] ?? 0,
+                    $stats['lines_ready'] ?? 0,
                     $stats['entries_failed'] ?? 0,
                 );
             } else {
@@ -67,6 +78,10 @@ class JournalImportController extends Controller
                     $stats['entries_skipped'],
                     $stats['entries_failed'],
                 );
+
+                if (($stats['periods_generated'] ?? 0) > 0) {
+                    $message .= ' Periode fiskal baru: ' . $stats['periods_generated'] . '.';
+                }
             }
 
             $redirect = redirect()
@@ -75,7 +90,7 @@ class JournalImportController extends Controller
                 ->with($stats['entries_failed'] > 0 ? 'warning' : 'success', $message);
 
             if (! empty($stats['errors'])) {
-                $redirect->with('import_errors', array_slice($stats['errors'], 0, 30));
+                $redirect->with('import_errors', array_slice($stats['errors'], 0, 50));
             }
 
             return $redirect;
