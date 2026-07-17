@@ -14,8 +14,14 @@
     </div>
 </div>
 
+@if ($errors->any())
+    <div class="mb-4 p-3 rounded bg-red-50 border border-red-200 text-red-800 text-sm">
+        {{ $errors->first() }}
+    </div>
+@endif
+
 <div class="bg-white rounded border border-odoo-border shadow-sm mb-4 p-3">
-    <form method="GET" class="flex flex-wrap gap-2 items-end">
+    <form method="GET" action="{{ route('accounting.journal-entries.index') }}" class="flex flex-wrap gap-2 items-end">
         <div class="flex-1 min-w-[200px]">
             <label class="text-xs text-gray-500">Cari</label>
             <input type="text" name="search" value="{{ request('search') }}" placeholder="No Bukti, deskripsi..."
@@ -39,17 +45,22 @@
             </select>
         </div>
         <div>
-            <label class="text-xs text-gray-500">Dari Tanggal</label>
+            <label class="text-xs text-gray-500">Dari Tanggal <span class="text-red-500">*</span></label>
             <input type="date" name="date_from" value="{{ request('date_from') }}"
                 class="border border-odoo-border rounded px-3 py-2 text-sm">
         </div>
         <div>
-            <label class="text-xs text-gray-500">Sampai Tanggal</label>
+            <label class="text-xs text-gray-500">Sampai Tanggal <span class="text-red-500">*</span></label>
             <input type="date" name="date_to" value="{{ request('date_to') }}"
                 class="border border-odoo-border rounded px-3 py-2 text-sm">
         </div>
         <button type="submit" class="odoo-btn-secondary">Filter</button>
+        <button type="submit" formaction="{{ route('accounting.journal-entries.export') }}"
+            class="odoo-btn-secondary" title="Export memerlukan rentang tanggal">
+            Export Excel
+        </button>
     </form>
+    <p class="text-xs text-gray-500 mt-2">Export Excel memakai filter yang sama; rentang tanggal wajib diisi.</p>
 </div>
 
 <div class="bg-white rounded border border-odoo-border shadow-sm overflow-x-auto">
@@ -61,8 +72,8 @@
                 <th>Tipe Jurnal</th>
                 <th>Pihak Kedua</th>
                 <th>Keterangan</th>
-                <th class="text-right">Debit</th>
-                <th class="text-right">Kredit</th>
+                <th class="text-right">Debit (IDR)</th>
+                <th class="text-right">Kredit (IDR)</th>
                 <th>Status</th>
             </tr>
         </thead>
@@ -78,8 +89,8 @@
                 <td>{{ $entry->journalType->name }}</td>
                 <td>{{ $entry->partner?->displayName() ?? '—' }}</td>
                 <td class="max-w-xs truncate">{{ $entry->notes ?? $entry->description ?? '—' }}</td>
-                <td class="text-right font-mono">{{ number_format($entry->total_debit ?? 0, 2, ',', '.') }}</td>
-                <td class="text-right font-mono">{{ number_format($entry->total_credit ?? 0, 2, ',', '.') }}</td>
+                <td class="text-right font-mono">{{ number_format($entry->total_idr_debit ?? 0, 2, ',', '.') }}</td>
+                <td class="text-right font-mono">{{ number_format($entry->total_idr_credit ?? 0, 2, ',', '.') }}</td>
                 <td>
                     <span class="{{ $entry->isPosted() ? 'odoo-badge-posted' : 'odoo-badge-draft' }}">
                         {{ $entry->status->label() }}

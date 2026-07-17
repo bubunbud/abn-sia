@@ -15,16 +15,29 @@
             'journalTypes' => $journalTypes->map(fn($t) => ['id' => $t->id, 'name' => $t->name])->values(),
             'suggestedNumber' => $suggestedNumber,
             'selectedJournalTypeId' => $selectedJournalTypeId,
-            'existingLines' => $entry->exists ? $entry->lines->map(fn($l) => [
-                'account_id' => $l->account_id,
-                'account_label' => $l->account?->displayName(),
-                'counter_account_id' => $l->counter_account_id,
-                'counter_account_label' => $l->counterAccount?->displayName(),
-                'description' => $l->description,
-                'notes' => $l->notes,
-                'debit' => (float) $l->debit,
-                'credit' => (float) $l->credit,
-            ])->values() : [],
+            'existingLines' => $entry->exists ? $entry->lines->values()->map(function ($l, $index) use ($entry) {
+                $notes = $l->notes;
+                if ($index === 0 && blank($notes)) {
+                    $notes = $entry->notes ?? $entry->description;
+                }
+
+                $exchangeRate = (float) ($l->exchange_rate ?? 1);
+                if ($index === 0 && $exchangeRate === 1.0 && (float) ($entry->exchange_rate ?? 1) !== 1.0) {
+                    $exchangeRate = (float) $entry->exchange_rate;
+                }
+
+                return [
+                    'account_id' => $l->account_id,
+                    'account_label' => $l->account?->displayName(),
+                    'counter_account_id' => $l->counter_account_id,
+                    'counter_account_label' => $l->counterAccount?->displayName(),
+                    'description' => $l->description,
+                    'notes' => $notes,
+                    'exchange_rate' => $exchangeRate,
+                    'debit' => (float) $l->debit,
+                    'credit' => (float) $l->credit,
+                ];
+            }) : [],
         ]))">
         @csrf
         @if ($entry->exists)
@@ -74,15 +87,6 @@
                     'selected' => $selectedPartner,
                 ])
             </div>
-            <div>
-                <label class="block text-xs text-gray-500 mb-1">Kurs</label>
-                <input type="number" step="0.000001" name="exchange_rate" value="{{ old('exchange_rate', $entry->exchange_rate ?? 1) }}"
-                    class="w-full border border-odoo-border rounded px-3 py-2 text-sm">
-            </div>
-            <div class="md:col-span-3">
-                <label class="block text-xs text-gray-500 mb-1">Keterangan</label>
-                <textarea name="notes" rows="2" class="w-full border border-odoo-border rounded px-3 py-2 text-sm">{{ old('notes', $entry->notes ?? $entry->description) }}</textarea>
-            </div>
         </div>
 
         @if ($errors->any())
@@ -100,23 +104,34 @@
                 <span class="font-medium">Baris Jurnal</span>
                 <button type="button" @click="addLine()" class="text-sm odoo-link">+ Tambah Baris</button>
             </div>
-            <table class="w-full text-sm">
+            <table class="w-full text-sm min-w-[1100px]">
                 <colgroup>
                     <col>
                     <col>
                     <col>
+                    <col>
                     <col class="w-32">
                     <col class="w-32">
+                    <col class="w-24">
+                    <col class="w-36">
+                    <col class="w-36">
                     <col class="w-16">
                 </colgroup>
                 <thead>
                     <tr class="bg-gray-50 text-xs uppercase text-gray-600">
-                        <th class="px-2 py-2 text-left">Akun *</th>
-                        <th class="px-2 py-2 text-left">Akun Lawan</th>
-                        <th class="px-2 py-2 text-left">Deskripsi</th>
-                        <th class="px-2 py-2 text-right w-32">Debet</th>
-                        <th class="px-2 py-2 text-right w-32">Kredit</th>
-                        <th class="px-2 py-2 w-16"></th>
+                        <th class="px-2 py-2 text-left" rowspan="2">Akun *</th>
+                        <th class="px-2 py-2 text-left" rowspan="2">Akun Lawan</th>
+                        <th class="px-2 py-2 text-left" rowspan="2">Deskripsi</th>
+                        <th class="px-2 py-2 text-left" rowspan="2">Keterangan</th>
+                        <th class="px-2 py-2 text-right w-32" rowspan="2">Debet</th>
+                        <th class="px-2 py-2 text-right w-32" rowspan="2">Kredit</th>
+                        <th class="px-2 py-2 text-right w-24" rowspan="2">Kurs</th>
+                        <th class="px-2 py-2 text-center bg-amber-50 border-l border-odoo-border" colspan="2">Posted to IDR</th>
+                        <th class="px-2 py-2 w-16" rowspan="2"></th>
+                    </tr>
+                    <tr class="bg-amber-50/70 text-xs uppercase text-gray-600">
+                        <th class="px-2 py-2 text-right w-36 border-l border-odoo-border">Debet</th>
+                        <th class="px-2 py-2 text-right w-36">Kredit</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -206,7 +221,11 @@
                             </td>
                             <td class="px-2 py-1">
                                 <input type="text" :name="'lines[' + index + '][description]'" x-model="line.description"
-                                    class="w-full min-w-[160px] border border-odoo-border rounded px-2 py-1 text-sm">
+                                    class="w-full min-w-[140px] border border-odoo-border rounded px-2 py-1 text-sm">
+                            </td>
+                            <td class="px-2 py-1">
+                                <input type="text" :name="'lines[' + index + '][notes]'" x-model="line.notes"
+                                    class="w-full min-w-[140px] border border-odoo-border rounded px-2 py-1 text-sm">
                             </td>
                             <td class="px-2 py-1 w-32 align-top">
                                 <input type="number" step="0.01" min="0" :name="'lines[' + index + '][debit]'" x-model="line.debit"
@@ -218,6 +237,16 @@
                                     @input="line.debit = line.credit > 0 ? 0 : line.debit"
                                     class="w-full border border-odoo-border rounded px-2 py-1 text-sm text-right font-mono">
                             </td>
+                            <td class="px-2 py-1 w-24 align-top">
+                                <input type="number" step="0.000001" min="0" :name="'lines[' + index + '][exchange_rate]'" x-model="line.exchange_rate"
+                                    class="w-full border border-odoo-border rounded px-2 py-1 text-sm text-right font-mono">
+                            </td>
+                            <td class="px-2 py-1 w-36 align-top bg-amber-50/40 border-l border-odoo-border">
+                                <div class="px-2 py-1 text-sm text-right font-mono text-gray-700" x-text="formatAmount(lineIdrDebit(line))"></div>
+                            </td>
+                            <td class="px-2 py-1 w-36 align-top bg-amber-50/40">
+                                <div class="px-2 py-1 text-sm text-right font-mono text-gray-700" x-text="formatAmount(lineIdrCredit(line))"></div>
+                            </td>
                             <td class="px-2 py-1 w-16 align-top">
                                 <button type="button" @click="removeLine(index)" class="text-red-500 text-xs" x-show="lines.length > 2">Hapus</button>
                             </td>
@@ -226,9 +255,12 @@
                 </tbody>
                 <tfoot class="bg-gray-50 font-semibold">
                     <tr>
-                        <td colspan="3" class="text-right px-2 py-2">Total</td>
+                        <td colspan="4" class="text-right px-2 py-2">Total</td>
                         <td class="text-right px-2 py-2 font-mono w-32" x-text="formatNumber(totalDebit)"></td>
                         <td class="text-right px-2 py-2 font-mono w-32" x-text="formatNumber(totalCredit)"></td>
+                        <td class="px-2 py-2 w-24"></td>
+                        <td class="text-right px-2 py-2 font-mono w-36 bg-amber-50/40 border-l border-odoo-border" x-text="formatNumber(totalIdrDebit)"></td>
+                        <td class="text-right px-2 py-2 font-mono w-36 bg-amber-50/40" x-text="formatNumber(totalIdrCredit)"></td>
                         <td class="px-2 py-2 w-16">
                             <span :class="isBalanced ? 'text-green-600' : 'text-red-600'" class="text-xs" x-text="isBalanced ? '✓ Seimbang' : '✗ Tidak seimbang'"></span>
                         </td>
@@ -368,6 +400,7 @@
                 counter_account_label: '',
                 description: '',
                 notes: '',
+                exchange_rate: 1,
                 debit: 0,
                 credit: 0,
             });
@@ -405,17 +438,39 @@
                 },
                 addLine() { this.lines.push(emptyLine()); },
                 removeLine(index) { this.lines.splice(index, 1); },
+                lineRate(line) {
+                    const rate = parseFloat(line.exchange_rate || 0);
+                    return rate > 0 ? rate : 1;
+                },
+                lineIdrDebit(line) {
+                    return parseFloat(line.debit || 0) * this.lineRate(line);
+                },
+                lineIdrCredit(line) {
+                    return parseFloat(line.credit || 0) * this.lineRate(line);
+                },
                 get totalDebit() {
                     return this.lines.reduce((s, l) => s + parseFloat(l.debit || 0), 0);
                 },
                 get totalCredit() {
                     return this.lines.reduce((s, l) => s + parseFloat(l.credit || 0), 0);
                 },
+                get totalIdrDebit() {
+                    return this.lines.reduce((s, l) => s + this.lineIdrDebit(l), 0);
+                },
+                get totalIdrCredit() {
+                    return this.lines.reduce((s, l) => s + this.lineIdrCredit(l), 0);
+                },
                 get isBalanced() {
                     return Math.abs(this.totalDebit - this.totalCredit) < 0.01 && this.totalDebit > 0;
                 },
                 formatNumber(n) {
                     return new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2 }).format(n);
+                },
+                formatAmount(n) {
+                    if (!n || Math.abs(n) < 0.005) {
+                        return '—';
+                    }
+                    return this.formatNumber(n);
                 },
                 async fetchSuggestedNumber() {
                     const res = await fetch(`{{ route('accounting.journal-entries.preview-number') }}?journal_type_id=${this.journalTypeId}`);

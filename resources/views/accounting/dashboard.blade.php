@@ -181,7 +181,7 @@
                     <th>Tanggal</th>
                     <th>Tipe</th>
                     <th>Keterangan</th>
-                    <th class="text-right">Jumlah</th>
+                    <th class="text-right">Jumlah (IDR)</th>
                     <th>Status</th>
                 </tr>
             </thead>
@@ -196,7 +196,7 @@
                         <td>{{ $entry->journalType->name }}</td>
                         <td class="max-w-[200px] truncate text-gray-600">{{ $entry->notes ?? $entry->description ?? '—' }}</td>
                         <td class="text-right font-mono text-sm whitespace-nowrap">
-                            {{ number_format($entry->total_debit ?? 0, 2, ',', '.') }}
+                            {{ number_format($entry->total_idr_debit ?? 0, 2, ',', '.') }}
                         </td>
                         <td>
                             <span class="{{ $entry->isPosted() ? 'odoo-badge-posted' : 'odoo-badge-draft' }}">

@@ -17,8 +17,10 @@ use RuntimeException;
 
 class JournalImportService
 {
-    public function __construct(private JournalImportSetupService $setupService)
-    {
+    public function __construct(
+        private JournalImportSetupService $setupService,
+        private EntryNumberGenerator $entryNumberGenerator,
+    ) {
     }
 
     private const COL_TYPE = 5;
@@ -110,6 +112,8 @@ class JournalImportService
             }
         }
 
+        $this->assignEntryNumbers($prepared, $journalTypes, $dryRun);
+
         $stats['meta'] = $this->buildMeta($prepared, $parsed['rows']);
 
         if ($dryRun) {
@@ -167,7 +171,7 @@ class JournalImportService
                     'status' => JournalEntryStatus::Posted,
                     'fiscal_period_id' => $entryData['fiscal_period_id'],
                     'exchange_rate' => $entryData['exchange_rate'],
-                    'is_manual_number' => true,
+                    'is_manual_number' => $entryData['is_manual_number'] ?? true,
                     'posted_at' => $entryData['entry_date'],
                     'posted_by' => $userId,
                     'created_by' => $userId,
@@ -198,6 +202,7 @@ class JournalImportService
             'entry_number' => null,
             'document_number' => null,
             'partner_name' => null,
+            'auto_seq' => 0,
         ];
 
         foreach ($sheet->getRowIterator($dataStartRow) as $row) {
@@ -220,9 +225,21 @@ class JournalImportService
             $documentNumber = $this->cellString($cells[self::COL_DOCUMENT_NUMBER - 1] ?? null);
             $partnerName = $this->cellString($cells[self::COL_PARTNER_NAME - 1] ?? null);
 
+            $isNewJournal = false;
+            if ($type !== '' && $type !== ($carry['type'] ?? '')) {
+                $isNewJournal = true;
+            }
+            if ($date !== null && $date !== ($carry['date'] ?? null)) {
+                $isNewJournal = true;
+            }
+            if ($documentNumber !== '' && $documentNumber !== ($carry['document_number'] ?? '')) {
+                $isNewJournal = true;
+            }
             if ($entryNumber !== ''
                 && $carry['entry_number'] !== null
+                && ! str_starts_with((string) $carry['entry_number'], '__AUTO__')
                 && $entryNumber !== $carry['entry_number']) {
+                $isNewJournal = true;
                 $carry['date'] = null;
             }
 
@@ -232,14 +249,18 @@ class JournalImportService
             if ($date !== null) {
                 $carry['date'] = $date;
             }
-            if ($entryNumber !== '') {
-                $carry['entry_number'] = $entryNumber;
-            }
             if ($documentNumber !== '') {
                 $carry['document_number'] = $documentNumber;
             }
             if ($partnerName !== '') {
                 $carry['partner_name'] = $partnerName;
+            }
+
+            if ($entryNumber !== '') {
+                $carry['entry_number'] = $entryNumber;
+            } elseif ($isNewJournal || $carry['entry_number'] === null) {
+                $carry['auto_seq']++;
+                $carry['entry_number'] = '__AUTO__'.$carry['auto_seq'];
             }
 
             $debit = $this->parseAmount($cells[self::COL_DEBIT - 1] ?? 0);
@@ -250,7 +271,7 @@ class JournalImportService
             }
 
             if ($carry['type'] === null || $carry['date'] === null || $carry['entry_number'] === '') {
-                throw new RuntimeException("Baris akun {$accountCode} tidak memiliki header jurnal lengkap.");
+                throw new RuntimeException("Baris akun {$accountCode} tidak memiliki header jurnal lengkap (Tipe dan Tanggal wajib).");
             }
 
             $rows[] = [
@@ -381,6 +402,8 @@ class JournalImportService
 
         $entryDate = Carbon::parse($first['date']);
 
+        $needsAutoNumber = str_starts_with((string) $first['entry_number'], '__AUTO__');
+
         return [
             'journal_type_id' => $journalTypes->get($typeCode)->id,
             'entry_number' => $first['entry_number'],
@@ -392,8 +415,41 @@ class JournalImportService
             'notes' => $this->firstNonEmpty($lines, 'notes'),
             'exchange_rate' => $exchangeRate,
             'fiscal_period_id' => $this->resolveFiscalPeriod($entryDate),
+            'needs_auto_number' => $needsAutoNumber,
+            'is_manual_number' => ! $needsAutoNumber,
             'lines' => $preparedLines,
         ];
+    }
+
+    /**
+     * Ganti placeholder __AUTO__ dengan nomor bukti dari generator (sama seperti form Buat Jurnal).
+     */
+    private function assignEntryNumbers(array &$prepared, $journalTypes, bool $dryRun): void
+    {
+        $previewCounters = [];
+
+        foreach ($prepared as &$entryData) {
+            if (! ($entryData['needs_auto_number'] ?? false)) {
+                continue;
+            }
+
+            $journalType = $journalTypes->firstWhere('id', $entryData['journal_type_id']);
+
+            if ($journalType === null) {
+                continue;
+            }
+
+            if ($dryRun) {
+                $next = $previewCounters[$journalType->id] ?? (int) $journalType->next_number;
+                $number = str_pad((string) $next, $journalType->number_padding, '0', STR_PAD_LEFT);
+                $entryData['entry_number'] = $journalType->prefix.'-'.$number;
+                $previewCounters[$journalType->id] = $next + 1;
+            } else {
+                $entryData['entry_number'] = $this->entryNumberGenerator->generate($journalType);
+            }
+
+            $entryData['is_manual_number'] = false;
+        }
     }
 
     private function findDataStartRow($sheet): int
@@ -473,6 +529,7 @@ class JournalImportService
             'source_lines' => count($rows),
             'entries_parsed' => count($prepared),
             'lines_parsed' => collect($prepared)->sum(fn (array $entry) => count($entry['lines'])),
+            'entries_auto_number' => collect($prepared)->filter(fn (array $entry) => $entry['needs_auto_number'] ?? false)->count(),
             'date_from' => $dates->min(),
             'date_to' => $dates->max(),
             'years' => $dates->map(fn (string $date) => (int) Carbon::parse($date)->format('Y'))->unique()->sort()->values()->all(),

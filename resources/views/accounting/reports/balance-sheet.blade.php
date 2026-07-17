@@ -14,7 +14,7 @@
     </div>
 
     <div class="bg-white rounded border border-odoo-border shadow-sm mb-4 p-4">
-        <form method="GET" class="flex flex-wrap gap-3 items-end">
+        <form method="GET" action="{{ route('accounting.reports.balance-sheet-detail') }}" class="flex flex-wrap gap-3 items-end">
             <div>
                 <label class="text-xs text-gray-500">Tahun</label>
                 <select name="year" class="border border-odoo-border rounded px-3 py-2 text-sm">
@@ -29,6 +29,10 @@
                 <label for="hide_zero" class="text-sm text-gray-600">Sembunyikan akun tanpa saldo</label>
             </div>
             <button type="submit" class="odoo-btn-primary">Tampilkan</button>
+            <button type="submit" formaction="{{ route('accounting.reports.balance-sheet.export') }}"
+                class="odoo-btn-secondary" title="Export 2 sheet: BS dan BS Detail">
+                Export Excel
+            </button>
         </form>
     </div>
 

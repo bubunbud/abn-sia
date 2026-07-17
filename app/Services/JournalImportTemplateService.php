@@ -61,10 +61,10 @@ class JournalImportTemplateService
         $sheet->setCellValue('H6', 2);
 
         $sampleRows = [
-            ['Bank Masuk', '2026-01-02', '1/I', null, 'RS. Immanuel', null, '1.121.001', null, 'BCA IDR A/C 2783000474', 'Inv. 537762, 774 ; RS. Immanuel', null, 184790300, 0, 1, 184790300, 0],
-            ['Bank Masuk', null, '1/I', null, 'RS. Immanuel', 'PDL 011', '1.141.001', '1.121.001', 'Piutang Dagang Lokal', 'Inv. 537762 ; RS. Immanuel', null, 0, 86535600, 1, 0, 86535600],
-            ['Bank Masuk', null, '1/I', null, 'RS. Immanuel', 'PDL 011', '1.141.001', '1.121.001', 'Piutang Dagang Lokal', 'Inv. 537774 ; RS. Immanuel', null, 0, 98257200, 1, 0, 98257200],
-            ['Bank Masuk', null, '1/I', null, 'RS. Immanuel', null, '9.111.002', '1.121.001', 'Beban Transfer', '- By Transfer', null, 2500, 0, 1, 2500, 0],
+            ['Bank Masuk', '2026-01-02', null, null, 'RS. Immanuel', null, '1.121.001', null, 'BCA IDR A/C 2783000474', 'Inv. 537762, 774 ; RS. Immanuel', null, 184790300, 0, 1, 184790300, 0],
+            ['Bank Masuk', null, null, null, 'RS. Immanuel', 'PDL 011', '1.141.001', '1.121.001', 'Piutang Dagang Lokal', 'Inv. 537762 ; RS. Immanuel', null, 0, 86535600, 1, 0, 86535600],
+            ['Bank Masuk', null, null, null, 'RS. Immanuel', 'PDL 011', '1.141.001', '1.121.001', 'Piutang Dagang Lokal', 'Inv. 537774 ; RS. Immanuel', null, 0, 98257200, 1, 0, 98257200],
+            ['Bank Masuk', null, null, null, 'RS. Immanuel', null, '9.111.002', '1.121.001', 'Beban Transfer', '- By Transfer', null, 2500, 0, 1, 2500, 0],
             ['Bank Keluar', '2026-01-03', 'BCA 001', 'EL 130805', 'Nama Pihak Kedua', 'HDL 115', '2.111.001', '1.121.001', 'Hutang Dagang Lokal', 'Pembayaran hutang', null, 1665000, 0, 1, 1665000, 0],
             ['Bank Keluar', null, 'BCA 001', 'EL 130805', 'Nama Pihak Kedua', null, '1.121.001', null, 'BCA IDR A/C 2783000474', 'Pembayaran hutang', null, 0, 1665000, 1, 0, 1665000],
         ];
@@ -100,14 +100,16 @@ class JournalImportTemplateService
 
         $noteRow = $row + 1;
         $sheet->setCellValue("E{$noteRow}", 'Catatan:');
-        $sheet->setCellValue("F{$noteRow}", 'Satu baris = satu baris akun. Header (Tipe, Tanggal, No Bukti) boleh diulang atau dikosongkan (carry-forward). Total Debet harus = Total Kredit per No Bukti.');
+        $sheet->setCellValue("F{$noteRow}", 'Satu baris = satu baris akun. Header (Tipe, Tanggal, No Bukti) boleh diulang atau dikosongkan (carry-forward).');
+        $sheet->setCellValue('F'.($noteRow + 1), 'No Bukti boleh dikosongkan — sistem generate otomatis sesuai tipe jurnal (sama seperti Buat Jurnal). Tipe dan Tanggal wajib di baris pertama setiap jurnal baru.');
+        $sheet->setCellValue('F'.($noteRow + 2), 'Total Debet harus = Total Kredit per jurnal. Kolom Posted to IDR bersifat referensi; sistem menghitung dari Debet/Kredit × Kurs saat impor.');
 
         $sheet->getStyle('E4:T5')->getFont()->setBold(true);
         $sheet->getStyle('E4:T5')->getFill()
             ->setFillType(Fill::FILL_SOLID)
             ->getStartColor()->setRGB('F3F4F6');
         $sheet->getStyle('E2')->getFont()->setBold(true)->setSize(14);
-        $sheet->getStyle("F{$noteRow}:T{$noteRow}")->getAlignment()->setWrapText(true);
+        $sheet->getStyle("F{$noteRow}:T".($noteRow + 2))->getAlignment()->setWrapText(true);
 
         foreach (range('E', 'T') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);

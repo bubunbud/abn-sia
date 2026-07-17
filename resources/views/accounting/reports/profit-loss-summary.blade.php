@@ -29,6 +29,10 @@
                 <label for="hide_zero" class="text-sm text-gray-600">Sembunyikan baris tanpa mutasi</label>
             </div>
             <button type="submit" class="odoo-btn-primary">Tampilkan</button>
+            <button type="submit" formaction="{{ route('accounting.reports.profit-loss.export') }}"
+                class="odoo-btn-secondary" title="Export 2 sheet: P&L dan P&LDetail">
+                Export Excel
+            </button>
         </form>
     </div>
 

@@ -42,6 +42,8 @@ Route::prefix('accounting')->name('accounting.')->middleware('auth')->group(func
 
     Route::get('/journal-entries/preview-number', [JournalEntryController::class, 'previewNumber'])
         ->name('journal-entries.preview-number');
+    Route::get('/journal-entries/export', [JournalEntryController::class, 'export'])
+        ->name('journal-entries.export');
     Route::get('/journal-entries/import', [JournalImportController::class, 'create'])
         ->name('journal-entries.import.create');
     Route::get('/journal-entries/import/template', [JournalImportController::class, 'downloadTemplate'])
@@ -55,15 +57,19 @@ Route::prefix('accounting')->name('accounting.')->middleware('auth')->group(func
     Route::resource('journal-entries', JournalEntryController::class);
 
     Route::get('/general-ledger', [GeneralLedgerController::class, 'index'])->name('general-ledger.index');
+    Route::get('/general-ledger/export', [GeneralLedgerController::class, 'export'])->name('general-ledger.export');
     Route::get('/general-ledger/summary', [GeneralLedgerController::class, 'summary'])->name('general-ledger.summary');
     Route::get('/general-ledger/line/{line}', [GeneralLedgerController::class, 'fromJournalLine'])
         ->name('general-ledger.from-line');
 
     Route::get('/trial-balance', [TrialBalanceController::class, 'index'])->name('trial-balance.index');
+    Route::get('/trial-balance/export', [TrialBalanceController::class, 'export'])->name('trial-balance.export');
 
     Route::prefix('reports')->name('reports.')->group(function () {
+        Route::get('/balance-sheet/export', [ReportController::class, 'exportBalanceSheet'])->name('balance-sheet.export');
         Route::get('/balance-sheet', [ReportController::class, 'balanceSheetSummary'])->name('balance-sheet');
         Route::get('/balance-sheet-detail', [ReportController::class, 'balanceSheet'])->name('balance-sheet-detail');
+        Route::get('/profit-loss/export', [ReportController::class, 'exportProfitLoss'])->name('profit-loss.export');
         Route::get('/profit-loss', [ReportController::class, 'profitLoss'])->name('profit-loss');
         Route::get('/profit-loss-detail', [ReportController::class, 'profitLossDetail'])->name('profit-loss-detail');
     });

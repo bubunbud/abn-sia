@@ -13,7 +13,7 @@
     </div>
 
     <div class="bg-white rounded border border-odoo-border shadow-sm mb-4 p-4">
-        <form method="GET" class="flex flex-wrap gap-3 items-end">
+        <form method="GET" action="{{ route('accounting.general-ledger.summary') }}" class="flex flex-wrap gap-3 items-end">
             <div>
                 <label class="text-xs text-gray-500">Dari Tanggal</label>
                 <input type="date" name="date_from" value="{{ $dateFrom }}"
@@ -25,11 +25,16 @@
                     class="border border-odoo-border rounded px-3 py-2 text-sm">
             </div>
             <button type="submit" class="odoo-btn-primary">Tampilkan</button>
+            <button type="submit" formaction="{{ route('accounting.general-ledger.export') }}"
+                class="odoo-btn-secondary" title="Export buku besar seluruh akun">
+                Export Excel
+            </button>
             <a href="{{ route('accounting.general-ledger.index', ['date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
                 class="odoo-btn-secondary">
                 GL per Akun
             </a>
         </form>
+        <p class="text-xs text-gray-500 mt-2">Export Excel menghasilkan buku besar <strong>semua akun</strong> dalam satu file, dikelompokkan per akun.</p>
     </div>
 
     <div class="flex flex-wrap items-center gap-3 mb-4 text-sm text-gray-600">

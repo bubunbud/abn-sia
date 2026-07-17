@@ -74,6 +74,7 @@ class ImportJournalsCommand extends Command
                     ['Baris sumber', $meta['source_lines'] ?? 0],
                     ['Rentang tanggal', ($meta['date_from'] ?? '—') . ' s/d ' . ($meta['date_to'] ?? '—')],
                     ['Tahun', implode(', ', $meta['years'] ?? [])],
+                    ['No Bukti otomatis', $meta['entries_auto_number'] ?? 0],
                     ['Tanpa periode fiskal', $meta['without_fiscal_period'] ?? 0],
                 ]);
             }

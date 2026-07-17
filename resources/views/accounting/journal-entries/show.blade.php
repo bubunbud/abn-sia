@@ -47,10 +47,6 @@
             <div class="font-medium">{{ $entry->partner?->displayName() ?? '—' }}</div>
         </div>
         <div>
-            <div class="text-gray-500 text-xs uppercase">Kurs</div>
-            <div class="font-medium">{{ number_format($entry->exchange_rate, 2, ',', '.') }}</div>
-        </div>
-        <div>
             <div class="text-gray-500 text-xs uppercase">No Bukti</div>
             <div class="font-medium">
                 {{ $entry->entry_number }}
@@ -59,12 +55,6 @@
                 @endif
             </div>
         </div>
-        @if ($entry->notes || $entry->description)
-            <div class="md:col-span-2">
-                <div class="text-gray-500 text-xs uppercase">Keterangan</div>
-                <div class="whitespace-pre-line">{{ $entry->notes ?? $entry->description }}</div>
-            </div>
-        @endif
         @if ($entry->isPosted() && $entry->posted_at)
             <div>
                 <div class="text-gray-500 text-xs uppercase">Diposting</div>
@@ -81,21 +71,32 @@
 
     <div class="bg-white rounded border border-odoo-border shadow-sm overflow-x-auto">
         <div class="px-4 py-3 border-b border-odoo-border font-medium">Baris Jurnal</div>
-        <table class="odoo-table w-full">
+        <table class="odoo-table w-full min-w-[1100px]">
             <thead>
                 <tr>
-                    <th>#</th>
-                    <th>Kode Akun</th>
-                    <th>Nama Akun</th>
-                    <th>Akun Lawan</th>
-                    <th>Deskripsi</th>
-                    <th class="text-right">Debet</th>
-                    <th class="text-right">Kredit</th>
-                    <th></th>
+                    <th rowspan="2">#</th>
+                    <th rowspan="2">Kode Akun</th>
+                    <th rowspan="2">Nama Akun</th>
+                    <th rowspan="2">Akun Lawan</th>
+                    <th rowspan="2">Deskripsi</th>
+                    <th rowspan="2">Keterangan</th>
+                    <th class="text-right" rowspan="2">Debet</th>
+                    <th class="text-right" rowspan="2">Kredit</th>
+                    <th class="text-right" rowspan="2">Kurs</th>
+                    <th class="text-center bg-amber-50 border-l border-odoo-border" colspan="2">Posted to IDR</th>
+                    <th rowspan="2"></th>
+                </tr>
+                <tr>
+                    <th class="text-right bg-amber-50/70 border-l border-odoo-border">Debet</th>
+                    <th class="text-right bg-amber-50/70">Kredit</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach ($entry->lines as $line)
+                    @php
+                        $idrDebit = (float) ($line->amount_idr_debit ?? round((float) $line->debit * (float) ($line->exchange_rate ?? 1), 2));
+                        $idrCredit = (float) ($line->amount_idr_credit ?? round((float) $line->credit * (float) ($line->exchange_rate ?? 1), 2));
+                    @endphp
                     <tr>
                         <td>{{ $line->line_order }}</td>
                         <td>
@@ -111,8 +112,12 @@
                         <td>{{ $line->account->name }}</td>
                         <td>{{ $line->counterAccount?->code ?? '—' }}</td>
                         <td>{{ $line->description ?? '—' }}</td>
+                        <td>{{ $line->notes ?? '—' }}</td>
                         <td class="text-right font-mono">{{ $line->debit > 0 ? number_format($line->debit, 2, ',', '.') : '—' }}</td>
                         <td class="text-right font-mono">{{ $line->credit > 0 ? number_format($line->credit, 2, ',', '.') : '—' }}</td>
+                        <td class="text-right font-mono">{{ number_format($line->exchange_rate ?? 1, 2, ',', '.') }}</td>
+                        <td class="text-right font-mono bg-amber-50/40 border-l border-odoo-border">{{ $idrDebit > 0 ? number_format($idrDebit, 2, ',', '.') : '—' }}</td>
+                        <td class="text-right font-mono bg-amber-50/40">{{ $idrCredit > 0 ? number_format($idrCredit, 2, ',', '.') : '—' }}</td>
                         <td>
                             <a href="{{ route('accounting.general-ledger.index', [
                                 'account_id' => $line->account_id,
@@ -125,10 +130,17 @@
                 @endforeach
             </tbody>
             <tfoot class="bg-gray-50 font-semibold">
+                @php
+                    $totalIdrDebit = $entry->lines->sum(fn ($line) => (float) ($line->amount_idr_debit ?? round((float) $line->debit * (float) ($line->exchange_rate ?? 1), 2)));
+                    $totalIdrCredit = $entry->lines->sum(fn ($line) => (float) ($line->amount_idr_credit ?? round((float) $line->credit * (float) ($line->exchange_rate ?? 1), 2)));
+                @endphp
                 <tr>
-                    <td colspan="5" class="text-right px-3 py-2">Total</td>
+                    <td colspan="6" class="text-right px-3 py-2">Total</td>
                     <td class="text-right font-mono px-3 py-2">{{ number_format($entry->totalDebit(), 2, ',', '.') }}</td>
                     <td class="text-right font-mono px-3 py-2">{{ number_format($entry->totalCredit(), 2, ',', '.') }}</td>
+                    <td class="px-3 py-2"></td>
+                    <td class="text-right font-mono px-3 py-2 bg-amber-50/40 border-l border-odoo-border">{{ number_format($totalIdrDebit, 2, ',', '.') }}</td>
+                    <td class="text-right font-mono px-3 py-2 bg-amber-50/40">{{ number_format($totalIdrCredit, 2, ',', '.') }}</td>
                     <td></td>
                 </tr>
             </tfoot>

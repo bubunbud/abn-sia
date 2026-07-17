@@ -165,8 +165,8 @@ class DashboardService
     {
         return JournalEntry::query()
             ->with(['journalType', 'partner'])
-            ->withSum('lines as total_debit', 'debit')
-            ->withSum('lines as total_credit', 'credit')
+            ->withSum('lines as total_idr_debit', 'amount_idr_debit')
+            ->withSum('lines as total_idr_credit', 'amount_idr_credit')
             ->orderByDesc('entry_date')
             ->orderByDesc('id')
             ->limit(10)

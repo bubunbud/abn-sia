@@ -88,6 +88,9 @@
                     <div>Baris sumber: <strong>{{ $meta['source_lines'] ?? 0 }}</strong></div>
                     <div>Rentang: <strong>{{ $meta['date_from'] ?? '—' }}</strong> s/d <strong>{{ $meta['date_to'] ?? '—' }}</strong></div>
                     <div>Tahun: <strong>{{ implode(', ', $meta['years'] ?? []) }}</strong></div>
+                    @if (($meta['entries_auto_number'] ?? 0) > 0)
+                        <div>No Bukti otomatis: <strong>{{ $meta['entries_auto_number'] }}</strong> jurnal</div>
+                    @endif
                     @if (($meta['without_fiscal_period'] ?? 0) > 0)
                         <div class="md:col-span-3 text-amber-700">
                             {{ $meta['without_fiscal_period'] }} jurnal belum terhubung periode fiskal — centang "Generate periode fiskal otomatis".
@@ -164,7 +167,8 @@
 
             <div class="bg-gray-50 rounded border border-odoo-border p-4 text-xs text-gray-600">
                 <p class="font-semibold text-gray-700 mb-1">Kolom yang dibaca (sheet Jurnal):</p>
-                <p>Tipe · Tanggal · No Bukti · No Giro · Pihak Kedua · Kode Akun · Akun Lawan · Deskripsi · Debet · Kredit · Kurs</p>
+                <p>Tipe · Tanggal · No Bukti (opsional) · No Giro · Pihak Kedua · Kode Akun · Akun Lawan · Deskripsi · Keterangan · Debet · Kredit · Kurs</p>
+                <p class="mt-2">Posted to IDR dihitung otomatis (<code>Debet/Kredit × Kurs</code>). Jika No Bukti kosong, nomor digenerate sesuai tipe jurnal.</p>
                 <p class="mt-2">Jurnal historis langsung berstatus <strong>Posted</strong>.</p>
             </div>
         </div>

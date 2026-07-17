@@ -11,12 +11,14 @@ use App\Models\JournalEntry;
 use App\Models\JournalType;
 use App\Services\EntryNumberGenerator;
 use App\Services\JournalEntryPostingService;
+use App\Services\JournalExportService;
 use App\Services\PeriodClosingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class JournalEntryController extends Controller
 {
@@ -24,6 +26,7 @@ class JournalEntryController extends Controller
         private EntryNumberGenerator $entryNumberGenerator,
         private PeriodClosingService $periodClosingService,
         private JournalEntryPostingService $postingService,
+        private JournalExportService $exportService,
     ) {
     }
 
@@ -31,8 +34,8 @@ class JournalEntryController extends Controller
     {
         $entries = JournalEntry::query()
             ->with(['journalType', 'partner'])
-            ->withSum('lines as total_debit', 'debit')
-            ->withSum('lines as total_credit', 'credit')
+            ->withSum('lines as total_idr_debit', 'amount_idr_debit')
+            ->withSum('lines as total_idr_credit', 'amount_idr_credit')
             ->when($request->filled('search'), function ($query) use ($request) {
                 $search = $request->string('search');
                 $query->where(function ($q) use ($search) {
@@ -58,6 +61,29 @@ class JournalEntryController extends Controller
                 ['label' => 'Accounting', 'url' => route('accounting.dashboard')],
                 ['label' => 'Journal Entries'],
             ],
+        ]);
+    }
+
+    public function export(Request $request): StreamedResponse|RedirectResponse
+    {
+        $validated = $request->validate([
+            'date_from' => ['required', 'date'],
+            'date_to' => ['required', 'date', 'after_or_equal:date_from'],
+            'search' => ['nullable', 'string'],
+            'journal_type_id' => ['nullable', 'exists:journal_types,id'],
+            'status' => ['nullable', 'string'],
+        ], [
+            'date_from.required' => 'Tentukan rentang tanggal (Dari Tanggal) untuk export.',
+            'date_to.required' => 'Tentukan rentang tanggal (Sampai Tanggal) untuk export.',
+            'date_to.after_or_equal' => 'Sampai Tanggal harus sama atau setelah Dari Tanggal.',
+        ]);
+
+        return $this->exportService->downloadResponse([
+            'date_from' => $validated['date_from'],
+            'date_to' => $validated['date_to'],
+            'search' => $validated['search'] ?? null,
+            'journal_type_id' => $validated['journal_type_id'] ?? null,
+            'status' => $validated['status'] ?? null,
         ]);
     }
 
@@ -115,15 +141,16 @@ class JournalEntryController extends Controller
                 'document_number' => $request->document_number,
                 'partner_id' => $request->partner_id,
                 'description' => null,
-                'notes' => $request->notes,
+                'notes' => null,
                 'status' => JournalEntryStatus::Draft,
                 'fiscal_period_id' => $fiscalPeriod?->id,
-                'exchange_rate' => $request->exchange_rate ?? 1,
+                'exchange_rate' => 1,
                 'is_manual_number' => $isManual,
                 'created_by' => Auth::id(),
             ]);
 
-            $this->syncLines($entry, $request->lines, $request->exchange_rate ?? 1);
+            $this->syncLines($entry, $request->lines);
+            $this->syncHeaderSummaryFromLines($entry);
 
             return $entry;
         });
@@ -210,14 +237,15 @@ class JournalEntryController extends Controller
                 'document_number' => $request->document_number,
                 'partner_id' => $request->partner_id,
                 'description' => null,
-                'notes' => $request->notes,
+                'notes' => null,
                 'fiscal_period_id' => $fiscalPeriod?->id,
-                'exchange_rate' => $request->exchange_rate ?? 1,
+                'exchange_rate' => 1,
                 'is_manual_number' => true,
             ]);
 
             $journalEntry->lines()->delete();
-            $this->syncLines($journalEntry, $request->lines, $request->exchange_rate ?? 1);
+            $this->syncLines($journalEntry, $request->lines);
+            $this->syncHeaderSummaryFromLines($journalEntry);
         });
 
         return redirect()
@@ -270,7 +298,7 @@ class JournalEntryController extends Controller
         ];
     }
 
-    private function syncLines(JournalEntry $entry, array $lines, float $exchangeRate): void
+    private function syncLines(JournalEntry $entry, array $lines): void
     {
         $totalDebit = 0;
         $totalCredit = 0;
@@ -281,6 +309,11 @@ class JournalEntryController extends Controller
 
             if ($debit == 0 && $credit == 0) {
                 continue;
+            }
+
+            $exchangeRate = (float) ($line['exchange_rate'] ?? 0);
+            if ($exchangeRate <= 0) {
+                $exchangeRate = 1;
             }
 
             $totalDebit += $debit;
@@ -304,5 +337,23 @@ class JournalEntryController extends Controller
         if (round($totalDebit, 2) !== round($totalCredit, 2)) {
             throw new \RuntimeException('Total debit dan kredit tidak seimbang.');
         }
+    }
+
+    /**
+     * Ringkasan header diisi dari baris pertama agar daftar jurnal tetap menampilkan keterangan.
+     */
+    private function syncHeaderSummaryFromLines(JournalEntry $entry): void
+    {
+        $firstLine = $entry->lines()->orderBy('line_order')->first();
+
+        if ($firstLine === null) {
+            return;
+        }
+
+        $entry->update([
+            'notes' => $firstLine->notes,
+            'description' => $firstLine->description,
+            'exchange_rate' => $firstLine->exchange_rate ?? 1,
+        ]);
     }
 }

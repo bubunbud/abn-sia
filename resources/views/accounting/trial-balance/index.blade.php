@@ -13,7 +13,7 @@
     </div>
 
     <div class="bg-white rounded border border-odoo-border shadow-sm mb-4 p-4">
-        <form method="GET" class="flex flex-wrap gap-3 items-end">
+        <form method="GET" action="{{ route('accounting.trial-balance.index') }}" class="flex flex-wrap gap-3 items-end">
             <div>
                 <label class="text-xs text-gray-500">Tahun</label>
                 <select name="year" class="border border-odoo-border rounded px-3 py-2 text-sm">
@@ -36,7 +36,14 @@
                 <label for="hide_zero" class="text-sm text-gray-600">Sembunyikan akun tanpa saldo/mutasi</label>
             </div>
             <button type="submit" class="odoo-btn-primary">Tampilkan</button>
+            <button type="submit" formaction="{{ route('accounting.trial-balance.export') }}"
+                class="odoo-btn-secondary" title="Export neraca saldo tahunan (Saldo Awal + Jan–Des + Saldo Akhir)">
+                Export Excel
+            </button>
         </form>
+        <p class="text-xs text-gray-500 mt-2">
+            Export Excel menghasilkan neraca saldo <strong>tahunan</strong> (Saldo Awal · Januari–Desember · Saldo Akhir) untuk tahun yang dipilih.
+        </p>
     </div>
 
     <div class="flex items-center gap-3 mb-3">

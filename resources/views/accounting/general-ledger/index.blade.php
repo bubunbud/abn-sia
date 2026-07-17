@@ -9,7 +9,7 @@
     </div>
 
     <div class="bg-white rounded border border-odoo-border shadow-sm mb-4 p-4">
-        <form method="GET" class="flex flex-wrap gap-3 items-end">
+        <form method="GET" action="{{ route('accounting.general-ledger.index') }}" class="flex flex-wrap gap-3 items-end">
             <div class="min-w-[280px]">
                 <label class="text-xs text-gray-500">Akun</label>
                 <select name="account_id" class="w-full border border-odoo-border rounded px-3 py-2 text-sm">
@@ -31,6 +31,10 @@
                     class="border border-odoo-border rounded px-3 py-2 text-sm">
             </div>
             <button type="submit" class="odoo-btn-primary">Tampilkan</button>
+            <button type="submit" formaction="{{ route('accounting.general-ledger.export') }}"
+                class="odoo-btn-secondary">
+                Export Excel
+            </button>
             <a href="{{ route('accounting.general-ledger.summary', ['date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
                 class="odoo-btn-secondary">
                 View All
