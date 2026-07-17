@@ -201,6 +201,7 @@ class JournalImportService
         ];
 
         foreach ($sheet->getRowIterator($dataStartRow) as $row) {
+            $rowIndex = $row->getRowIndex();
             $cells = [];
             foreach ($row->getCellIterator() as $cell) {
                 $cells[] = $cell->getValue();
@@ -213,10 +214,17 @@ class JournalImportService
             }
 
             $type = $this->cellString($cells[self::COL_TYPE - 1] ?? null);
-            $date = $this->parseDate($cells[self::COL_DATE - 1] ?? null);
+            $dateCell = $sheet->getCell([self::COL_DATE, $rowIndex]);
+            $date = $this->parseDateFromCell($dateCell);
             $entryNumber = $this->cellString($cells[self::COL_ENTRY_NUMBER - 1] ?? null);
             $documentNumber = $this->cellString($cells[self::COL_DOCUMENT_NUMBER - 1] ?? null);
             $partnerName = $this->cellString($cells[self::COL_PARTNER_NAME - 1] ?? null);
+
+            if ($entryNumber !== ''
+                && $carry['entry_number'] !== null
+                && $entryNumber !== $carry['entry_number']) {
+                $carry['date'] = null;
+            }
 
             if ($type !== '') {
                 $carry['type'] = $type;
@@ -544,6 +552,21 @@ class JournalImportService
         return (float) $value;
     }
 
+    private function parseDateFromCell(\PhpOffice\PhpSpreadsheet\Cell\Cell $cell): ?string
+    {
+        $value = $cell->getValue();
+
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (ExcelDate::isDateTime($cell)) {
+            return ExcelDate::excelToDateTimeObject((float) $value)->format('Y-m-d');
+        }
+
+        return $this->parseDate($value);
+    }
+
     private function parseDate(mixed $value): ?string
     {
         if ($value === null || $value === '') {
@@ -555,11 +578,23 @@ class JournalImportService
         }
 
         if (is_numeric($value)) {
-            return ExcelDate::excelToDateTimeObject((float) $value)->format('Y-m-d');
+            $serial = (float) $value;
+
+            if ($serial < 1000) {
+                return null;
+            }
+
+            return ExcelDate::excelToDateTimeObject($serial)->format('Y-m-d');
+        }
+
+        $string = trim((string) $value);
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $string)) {
+            return $string;
         }
 
         try {
-            return Carbon::parse((string) $value)->toDateString();
+            return Carbon::parse($string)->toDateString();
         } catch (\Throwable) {
             return null;
         }

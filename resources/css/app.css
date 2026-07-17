@@ -11,6 +11,14 @@
         @apply bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 px-3 py-2 border-b border-odoo-border;
     }
 
+    .odoo-table th.text-right {
+        text-align: right;
+    }
+
+    .odoo-table th.text-center {
+        text-align: center;
+    }
+
     .odoo-table td {
         @apply px-3 py-2 text-sm border-b border-odoo-border;
     }

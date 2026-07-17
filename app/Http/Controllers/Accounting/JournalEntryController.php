@@ -38,11 +38,14 @@ class JournalEntryController extends Controller
                 $query->where(function ($q) use ($search) {
                     $q->where('entry_number', 'like', "%{$search}%")
                         ->orWhere('description', 'like', "%{$search}%")
+                        ->orWhere('notes', 'like', "%{$search}%")
                         ->orWhere('document_number', 'like', "%{$search}%");
                 });
             })
             ->when($request->filled('journal_type_id'), fn ($q) => $q->where('journal_type_id', $request->journal_type_id))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
+            ->when($request->filled('date_from'), fn ($q) => $q->whereDate('entry_date', '>=', $request->date_from))
+            ->when($request->filled('date_to'), fn ($q) => $q->whereDate('entry_date', '<=', $request->date_to))
             ->orderByDesc('entry_date')
             ->orderByDesc('id')
             ->paginate(25)
@@ -111,8 +114,8 @@ class JournalEntryController extends Controller
                 'period' => $request->period,
                 'document_number' => $request->document_number,
                 'partner_id' => $request->partner_id,
-                'description' => $request->description,
-                'notes' => null,
+                'description' => null,
+                'notes' => $request->notes,
                 'status' => JournalEntryStatus::Draft,
                 'fiscal_period_id' => $fiscalPeriod?->id,
                 'exchange_rate' => $request->exchange_rate ?? 1,
@@ -206,8 +209,8 @@ class JournalEntryController extends Controller
                 'period' => $request->period,
                 'document_number' => $request->document_number,
                 'partner_id' => $request->partner_id,
-                'description' => $request->description,
-                'notes' => null,
+                'description' => null,
+                'notes' => $request->notes,
                 'fiscal_period_id' => $fiscalPeriod?->id,
                 'exchange_rate' => $request->exchange_rate ?? 1,
                 'is_manual_number' => true,

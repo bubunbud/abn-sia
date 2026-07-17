@@ -21,7 +21,7 @@ class StoreJournalEntryRequest extends FormRequest
             'period' => ['required', 'integer', 'min:1', 'max:12'],
             'document_number' => ['nullable', 'string', 'max:50'],
             'partner_id' => ['nullable', 'exists:partners,id'],
-            'description' => ['nullable', 'string'],
+            'notes' => ['nullable', 'string'],
             'exchange_rate' => ['nullable', 'numeric', 'min:0'],
             'lines' => ['required', 'array', 'min:2'],
             'lines.*.account_id' => ['required', 'exists:accounts,id'],

@@ -59,10 +59,10 @@
                 @endif
             </div>
         </div>
-        @if ($entry->description || $entry->notes)
+        @if ($entry->notes || $entry->description)
             <div class="md:col-span-2">
-                <div class="text-gray-500 text-xs uppercase">Deskripsi</div>
-                <div class="whitespace-pre-line">{{ $entry->description ?? $entry->notes }}</div>
+                <div class="text-gray-500 text-xs uppercase">Keterangan</div>
+                <div class="whitespace-pre-line">{{ $entry->notes ?? $entry->description }}</div>
             </div>
         @endif
         @if ($entry->isPosted() && $entry->posted_at)

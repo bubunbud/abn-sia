@@ -2,16 +2,19 @@
 
 namespace App\Http\Controllers\Accounting;
 
-use App\Enums\JournalEntryStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\JournalEntryLine;
+use App\Services\GeneralLedgerService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class GeneralLedgerController extends Controller
 {
+    public function __construct(
+        private readonly GeneralLedgerService $generalLedgerService,
+    ) {}
     public function index(Request $request): View
     {
         $accounts = Account::where('is_active', true)
@@ -25,38 +28,15 @@ class GeneralLedgerController extends Controller
         $highlightEntryId = $request->integer('highlight_entry');
 
         $lines = collect();
-        $runningBalance = 0;
-        $account = null;
+        $account = $accountId ? Account::find($accountId) : null;
 
-        if ($accountId) {
-            $account = Account::find($accountId);
-
-            $rawLines = JournalEntryLine::query()
-                ->with(['journalEntry.partner', 'account'])
-                ->where('account_id', $accountId)
-                ->whereHas('journalEntry', function ($q) use ($dateFrom, $dateTo) {
-                    $q->where('status', JournalEntryStatus::Posted)
-                        ->whereBetween('entry_date', [$dateFrom, $dateTo]);
-                })
-                ->join('journal_entries', 'journal_entry_lines.journal_entry_id', '=', 'journal_entries.id')
-                ->orderBy('journal_entries.entry_date')
-                ->orderBy('journal_entry_lines.id')
-                ->select('journal_entry_lines.*')
-                ->get();
-
-            foreach ($rawLines as $line) {
-                if ($account->normal_balance === 'debit') {
-                    $runningBalance += (float) $line->debit - (float) $line->credit;
-                } else {
-                    $runningBalance += (float) $line->credit - (float) $line->debit;
-                }
-
-                $lines->push([
-                    'line' => $line,
-                    'balance' => $runningBalance,
-                    'highlight' => $highlightEntryId && $line->journal_entry_id == $highlightEntryId,
-                ]);
-            }
+        if ($account) {
+            $lines = $this->generalLedgerService->accountDetail(
+                $account,
+                $dateFrom,
+                $dateTo,
+                $highlightEntryId ?: null,
+            );
         }
 
         return view('accounting.general-ledger.index', [
@@ -69,6 +49,33 @@ class GeneralLedgerController extends Controller
             'breadcrumbs' => [
                 ['label' => 'Accounting', 'url' => route('accounting.dashboard')],
                 ['label' => 'General Ledger'],
+            ],
+        ]);
+    }
+
+    public function summary(Request $request): View
+    {
+        $dateFrom = $request->get('date_from', now()->startOfMonth()->toDateString());
+        $dateTo = $request->get('date_to', now()->endOfMonth()->toDateString());
+
+        $accountLedgers = $this->generalLedgerService->allAccountsDetail($dateFrom, $dateTo);
+
+        $totals = [
+            'accounts' => $accountLedgers->count(),
+            'lines' => $accountLedgers->sum(fn (array $group) => $group['lines']->count()),
+            'debit' => $accountLedgers->sum('total_debit'),
+            'credit' => $accountLedgers->sum('total_credit'),
+        ];
+
+        return view('accounting.general-ledger.summary', [
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'accountLedgers' => $accountLedgers,
+            'totals' => $totals,
+            'breadcrumbs' => [
+                ['label' => 'Accounting', 'url' => route('accounting.dashboard')],
+                ['label' => 'General Ledger', 'url' => route('accounting.general-ledger.index')],
+                ['label' => 'View All'],
             ],
         ]);
     }

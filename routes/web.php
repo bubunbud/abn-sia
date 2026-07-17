@@ -55,6 +55,7 @@ Route::prefix('accounting')->name('accounting.')->middleware('auth')->group(func
     Route::resource('journal-entries', JournalEntryController::class);
 
     Route::get('/general-ledger', [GeneralLedgerController::class, 'index'])->name('general-ledger.index');
+    Route::get('/general-ledger/summary', [GeneralLedgerController::class, 'summary'])->name('general-ledger.summary');
     Route::get('/general-ledger/line/{line}', [GeneralLedgerController::class, 'fromJournalLine'])
         ->name('general-ledger.from-line');
 

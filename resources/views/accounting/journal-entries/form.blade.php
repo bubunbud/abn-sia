@@ -80,8 +80,8 @@
                     class="w-full border border-odoo-border rounded px-3 py-2 text-sm">
             </div>
             <div class="md:col-span-3">
-                <label class="block text-xs text-gray-500 mb-1">Deskripsi</label>
-                <textarea name="description" rows="2" class="w-full border border-odoo-border rounded px-3 py-2 text-sm">{{ old('description', $entry->description ?? $entry->notes) }}</textarea>
+                <label class="block text-xs text-gray-500 mb-1">Keterangan</label>
+                <textarea name="notes" rows="2" class="w-full border border-odoo-border rounded px-3 py-2 text-sm">{{ old('notes', $entry->notes ?? $entry->description) }}</textarea>
             </div>
         </div>
 

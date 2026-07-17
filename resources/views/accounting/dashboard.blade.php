@@ -180,7 +180,7 @@
                     <th>No Bukti</th>
                     <th>Tanggal</th>
                     <th>Tipe</th>
-                    <th>Deskripsi</th>
+                    <th>Keterangan</th>
                     <th class="text-right">Jumlah</th>
                     <th>Status</th>
                 </tr>
@@ -194,7 +194,7 @@
                         </td>
                         <td class="whitespace-nowrap">{{ $entry->entry_date->format('d M Y') }}</td>
                         <td>{{ $entry->journalType->name }}</td>
-                        <td class="max-w-[200px] truncate text-gray-600">{{ $entry->description ?? '—' }}</td>
+                        <td class="max-w-[200px] truncate text-gray-600">{{ $entry->notes ?? $entry->description ?? '—' }}</td>
                         <td class="text-right font-mono text-sm whitespace-nowrap">
                             {{ number_format($entry->total_debit ?? 0, 2, ',', '.') }}
                         </td>

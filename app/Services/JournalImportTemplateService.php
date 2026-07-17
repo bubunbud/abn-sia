@@ -61,12 +61,12 @@ class JournalImportTemplateService
         $sheet->setCellValue('H6', 2);
 
         $sampleRows = [
-            ['Bank Masuk', '2025-01-02', '1/I', null, 'RS. Immanuel', null, '1.121.001', null, 'BCA IDR A/C 2783000474', 'Inv. 537762, 774 ; RS. Immanuel', null, 184790300, 0, 1, 184790300, 0],
-            ['Bank Masuk', '2025-01-02', '1/I', null, 'RS. Immanuel', 'PDL 011', '1.141.001', '1.121.001', 'Piutang Dagang Lokal', 'Inv. 537762 ; RS. Immanuel', null, 0, 86535600, 1, 0, 86535600],
-            ['Bank Masuk', '2025-01-02', '1/I', null, 'RS. Immanuel', 'PDL 011', '1.141.001', '1.121.001', 'Piutang Dagang Lokal', 'Inv. 537774 ; RS. Immanuel', null, 0, 98257200, 1, 0, 98257200],
-            ['Bank Masuk', '2025-01-02', '1/I', null, 'RS. Immanuel', null, '9.111.002', '1.121.001', 'Beban Transfer', '- By Transfer', null, 2500, 0, 1, 2500, 0],
-            ['Bank Keluar', '2025-01-02', 'BCA 001', 'EL 130805', 'Nama Pihak Kedua', 'HDL 115', '2.111.001', '1.121.001', 'Hutang Dagang Lokal', 'Pembayaran hutang', null, 1665000, 0, 1, 1665000, 0],
-            ['Bank Keluar', '2025-01-02', 'BCA 001', 'EL 130805', 'Nama Pihak Kedua', null, '1.121.001', null, 'BCA IDR A/C 2783000474', 'Pembayaran hutang', null, 0, 1665000, 1, 0, 1665000],
+            ['Bank Masuk', '2026-01-02', '1/I', null, 'RS. Immanuel', null, '1.121.001', null, 'BCA IDR A/C 2783000474', 'Inv. 537762, 774 ; RS. Immanuel', null, 184790300, 0, 1, 184790300, 0],
+            ['Bank Masuk', null, '1/I', null, 'RS. Immanuel', 'PDL 011', '1.141.001', '1.121.001', 'Piutang Dagang Lokal', 'Inv. 537762 ; RS. Immanuel', null, 0, 86535600, 1, 0, 86535600],
+            ['Bank Masuk', null, '1/I', null, 'RS. Immanuel', 'PDL 011', '1.141.001', '1.121.001', 'Piutang Dagang Lokal', 'Inv. 537774 ; RS. Immanuel', null, 0, 98257200, 1, 0, 98257200],
+            ['Bank Masuk', null, '1/I', null, 'RS. Immanuel', null, '9.111.002', '1.121.001', 'Beban Transfer', '- By Transfer', null, 2500, 0, 1, 2500, 0],
+            ['Bank Keluar', '2026-01-03', 'BCA 001', 'EL 130805', 'Nama Pihak Kedua', 'HDL 115', '2.111.001', '1.121.001', 'Hutang Dagang Lokal', 'Pembayaran hutang', null, 1665000, 0, 1, 1665000, 0],
+            ['Bank Keluar', null, 'BCA 001', 'EL 130805', 'Nama Pihak Kedua', null, '1.121.001', null, 'BCA IDR A/C 2783000474', 'Pembayaran hutang', null, 0, 1665000, 1, 0, 1665000],
         ];
 
         $row = 7;
